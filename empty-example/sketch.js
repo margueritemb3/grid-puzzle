@@ -14,10 +14,12 @@ let offset = size * 10;
 
 let grid;
 let puzzle;
-let hHeadings = [];
-let vHeadings = [];
-let rows = [];
-let cols = [];
+let horizontalHeadings = [];
+let verticalHeadings = [];
+let horizontalValues = [];
+let verticalValues = [];
+let rowStatus = [];
+let colStatus = [];
 
 function newPuzzle() {
   let puzzle = [];
@@ -35,7 +37,7 @@ function newGrid() {
   for (let i = 0; i < size; i++) {
     grid[i] = [];
     for (let j = 0; j < size; j++) {
-      grid[i][j] = blank;
+      grid[i][j] = "b";
     }
   }
   return grid;
@@ -55,48 +57,50 @@ function setup() {
   console.log(puzzle);
 
   for (let i = 0; i < size; i++) {
-    rows[i] = blank;
-    cols[i] = blank;
+    rowStatus[i] = blank;
+    colStatus[i] = blank;
   }
 
-
-  let hcount = 0;
-  let vcount = 0;
   for (let i = 0; i < size; i++) {
-    hHeadings[i] = "";
-    vHeadings[i] = "";
+    horizontalValues[i] = [0];
+    verticalValues[i] = [0];
+    let hcount = 0;
+    let vcount = 0;
     for (let j = 0; j < size; j++) {
       if (puzzle[i][j]) {
-        if (hcount === 0) hHeadings[i] += "\n";
         hcount++;
-      }
-      else if (!puzzle[i][j]) {
-        if (hcount !== 0) hHeadings[i] += hcount;
+      } else if (hcount !== 0) {
+        horizontalValues[i].push(hcount);
         hcount = 0;
       }
-
       if (puzzle[j][i]) {
-        if (vcount === 0) vHeadings[i] += " ";
         vcount++;
-      }
-      else if (!puzzle[j][i]) {
-        if (vcount !== 0) vHeadings[i] += vcount;
+      } else if (vcount !== 0) {
+        verticalValues[i].push(vcount);
         vcount = 0;
       }
     }
-    if (hcount > 0) hHeadings[i] += hcount;
-    if (vcount > 0) vHeadings[i] += vcount;
-
-    if (hHeadings[i] === "") hHeadings[i] += "\n" + 0;
-    if (vHeadings[i] === "") vHeadings[i] += " " + 0;
-
-    hcount = 0;
-    vcount = 0;
-
+    if (hcount !== 0) {
+      horizontalValues[i].push(hcount);
+    }
+    if (vcount !== 0) {
+      verticalValues[i].push(vcount);
+    }
+    if (horizontalValues[i].length > 1) {
+      horizontalValues[i].shift();
+    }
+    if (verticalValues[i].length > 1) {
+      verticalValues[i].shift();
+    }
+  }
+  for (let i = 0; i < size; i++) {
+    horizontalHeadings[i] = horizontalValues[i].join("\n");
+    verticalHeadings[i] = verticalValues[i].join(" ");
   }
 
-
 }
+
+
 
 function draw() {
   background(220);
@@ -108,19 +112,22 @@ function draw() {
   //rect(0, 0, offset);
 
   for (let i = 0; i < size; i++) {
-    fill(rows[i]);
+    fill(rowStatus[i]);
     rect(i * width + offset, 0, width, offset);
-    fill(cols[i]);
+    fill(colStatus[i]);
     rect(0, i * width + offset, offset, width);
 
     fill(words);
-    text(hHeadings[i], i * width + offset + 10, 0, width, offset);
-    text(vHeadings[i], 10, i * width + offset + 10, offset, width);
+    text(horizontalHeadings[i], i * width + offset + 10, 10, width, offset);
+    text(verticalHeadings[i], 10, i * width + offset + 10, offset, width);
   }
 
   for (let i = 0; i < size; i++) {
     for (let j = 0; j < size; j++) {
-      fill(grid[i][j]);
+      let c = grid[i][j];
+      if (c === "b") fill(blank);
+      if (c === "f") fill(filled);
+      if (c === "i") fill(ignored);
       rect(i * width + offset, j * width + offset, width);
     }
   }
@@ -128,34 +135,48 @@ function draw() {
 
 function checkLines() {
   for (let i = 0; i < size; i++) {
-    let row = true;
-    let col = true;
+
+    let horizontalSubStr = "";
+    let verticalSubStr = ""
+
+    //turn grid into strings for each row
     for (let j = 0; j < size; j++) {
-      if ((grid[i][j] === filled && !puzzle[i][j]) || (grid[i][j] !== filled && puzzle[i][j])) {
-        row = false;
-
-      }
-      if ((grid[j][i] === filled && !puzzle[j][i]) || (grid[j][i] !== filled && puzzle[j][i])) {
-        col = false;
-      }
-    }
-    if (row) {
-      rows[i] = completeLine;
-    } else {
-      rows[i] = blank;
+      horizontalSubStr += grid[i][j];
+      verticalSubStr += grid[j][i];
     }
 
-    if (col) {
-      cols[i] = completeLine;
+    //make regex
+    let horizontalRegEx = "^(b|i)*"
+    let verticalRegEx = "^(b|i)*";
+
+    for (let j = 0; j < horizontalValues[i].length - 1; j++) {
+      horizontalRegEx += "f{" + horizontalValues[i][j] + "}(b|i)+";
+    }
+
+    for (let j = 0; j < verticalValues[i].length - 1; j++) {
+      verticalRegEx += "f{" + verticalValues[i][j] + "}(b|i)+";
+    }
+
+    horizontalRegEx = new RegExp(horizontalRegEx + "f{" + horizontalValues[i][horizontalValues[i].length - 1] + "}(b|i)*$");
+    verticalRegEx = new RegExp(verticalRegEx + "f{" + verticalValues[i][verticalValues[i].length - 1] + "}(b|i)*$");
+
+    if (horizontalRegEx.test(horizontalSubStr)) {
+      rowStatus[i] = completeLine;
     } else {
-      cols[i] = blank;
+      rowStatus[i] = blank;
+    }
+
+    if (verticalRegEx.test(verticalSubStr)) {
+      colStatus[i] = completeLine;
+    } else {
+      colStatus[i] = blank;
     }
   }
 }
 
 function checkWin() {
   for (let i = 0; i < size; i++) {
-    if (rows[i] == blank || cols[i] == blank) {
+    if (rowStatus[i] == blank || colStatus[i] == blank) {
       return;
     }
   }
@@ -168,12 +189,12 @@ function mousePressed() {
       let x = i * width + offset;
       let y = j * width + offset;
       if (isIn(i, j, mouseX, mouseY)) {
-        if (grid[i][j] === blank) {
-          grid[i][j] = filled;
-        } else if (grid[i][j] === filled) {
-          grid[i][j] = ignored;
-        } else if (grid[i][j] === ignored) {
-          grid[i][j] = blank;
+        if (grid[i][j] === "b") {
+          grid[i][j] = "f";
+        } else if (grid[i][j] === "f") {
+          grid[i][j] = "i";
+        } else if (grid[i][j] === "i") {
+          grid[i][j] = "b";
         }
         checkLines();
         checkWin();
