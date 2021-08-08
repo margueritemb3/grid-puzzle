@@ -1,5 +1,7 @@
 let completeGame = false;
 
+let instructions = "INSTRUCTIONS:   The  player  can  click  on  the  squares  in  the  grid  to change their color (one click for pink, two for gray).  The goal is to color the correct squares  following the clues  printed  on the left side  and top of the grid that correspond to the number of colored squares in sequence in each row/column."
+
 //colors
 let blank = 'white';
 let filled = 'pink';
@@ -47,7 +49,7 @@ function newGrid() {
 }
 
 function setup() {
-  createCanvas(60 * size, 55 * size);
+  createCanvas(60 * size, 80 * size);
   grid = newGrid();
   puzzle = newPuzzle();
 
@@ -163,6 +165,9 @@ function draw() {
     text("PLAY AGAIN", 30 * size - 60, 25 * size + 60, 22 * size, 16 * size);
     textAlign(LEFT);
   }
+
+  fill(words);
+  text(instructions, sideBorder, topBorder + offset + size * width + 100, 60 * size - sideBorder * 2, 10 * size);
 
 }
 
